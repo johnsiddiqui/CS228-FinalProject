@@ -1,0 +1,78 @@
+# John Siddiqui
+# Final Project
+# Data Processing
+
+## Packages
+using Pkg
+Pkg.add("CSV")
+Pkg.add("Printf")
+Pkg.add("DataFrames")
+
+using CSV
+using DataFrames
+
+# Load ratings and movies data
+ratings = CSV.File("Final Project/Data/ml-100k/u.data", header = false) |> DataFrame
+rename!(ratings, [:userId,:movieId,:rating,:timestamp])
+
+movies = CSV.File("Final Project/Data/ml-100k/u.item", header = false) |> DataFrame
+rename!(movies, [:movieId,:movieTitle,:releaseDate,:unk,:url,:unknown,:action,:adventure,:animation,:childrens,:comedy,:crime,:documentary,
+:drama,:fantasy,:filmNoir,:horror,:musical,:mystery,:romance,:sciFi,:thriller,:war,:western])
+
+users = CSV.File("Final Project/Data/ml-100k/u.user", header = false) |> DataFrame #user id | age | gender | occupation | zip code
+rename!(users, [:userId,:age,:gender,:occupation,:zipCode])
+
+# Other
+genres = CSV.File("Final Project/Data/ml-100k/u.genre", header = false) |> DataFrame #genre ids
+occupations = CSV.File("Final Project/Data/ml-100k/u.occupation", header = false) |> DataFrame #occupations listed
+
+# Movie Struct
+struct movieFile
+    id
+    name 
+    genres
+    releaseYear
+end
+
+movieDict = Dict()
+numberOfMovies = size(movies,1)
+genresBegin = 7; genresEnd = 24
+
+for m in 1:numberOfMovies
+    row = movies[m,:]
+    name = row[2]
+    truefalseGenres = row[genresBegin:genresEnd]
+    trueGenres = names(truefalseGenres)[collect(truefalseGenres) .== 1]
+    year = row[3]
+    if ismissing(year)
+        year = NaN
+    else
+        year = parse(Int,year[end-3:end])
+    end
+    movieDict[m] = movieFile(m,name,trueGenres,year)
+end
+
+# Extract genre lists while preserving the original order
+genre_combinations = [movieDict[i].genres for i in 1:numberOfMovies]  # Get all genre lists
+
+# Use `unique` to eliminate duplicates while preserving the first occurrence order
+unique_combinations = unique(genre_combinations)
+
+# Number of unique combinations
+num_unique_combinations = length(unique_combinations)
+
+numMoviesofType = zeros(num_unique_combinations,1)
+
+for n in 1:num_unique_combinations
+    for m in 1:numberOfMovies
+        if unique_combinations[n] == movieDict[m].genres
+            numMoviesofType[n] += 1
+        end
+    end
+end
+
+
+
+
+
+

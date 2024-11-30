@@ -7,29 +7,31 @@ using Pkg
 Pkg.add("CSV")
 Pkg.add("Printf")
 Pkg.add("DataFrames")
+Pkg.add("StatsBase")
 
 using CSV
 using DataFrames
 
 # Load ratings and movies data
-ratings = CSV.File("Final Project/Data/ml-100k/u.data", header = false) |> DataFrame
+ratings = CSV.File("CS228/Data/ml-100k/u.data", header = false) |> DataFrame
 rename!(ratings, [:userId,:movieId,:rating,:timestamp])
 
-movies = CSV.File("Final Project/Data/ml-100k/u.item", header = false) |> DataFrame
+movies = CSV.File("CS228/Data/ml-100k/u.item", header = false) |> DataFrame
 rename!(movies, [:movieId,:movieTitle,:releaseDate,:unk,:url,:unknown,:action,:adventure,:animation,:childrens,:comedy,:crime,:documentary,
 :drama,:fantasy,:filmNoir,:horror,:musical,:mystery,:romance,:sciFi,:thriller,:war,:western])
 
-users = CSV.File("Final Project/Data/ml-100k/u.user", header = false) |> DataFrame #user id | age | gender | occupation | zip code
+users = CSV.File("CS228/Data/ml-100k/u.user", header = false) |> DataFrame #user id | age | gender | occupation | zip code
 rename!(users, [:userId,:age,:gender,:occupation,:zipCode])
 
 # Other
-genres = CSV.File("Final Project/Data/ml-100k/u.genre", header = false) |> DataFrame #genre ids
-occupations = CSV.File("Final Project/Data/ml-100k/u.occupation", header = false) |> DataFrame #occupations listed
+genres = CSV.File("CS228/Data/ml-100k/u.genre", header = false) |> DataFrame #genre ids
+occupations = CSV.File("CS228/Data/ml-100k/u.occupation", header = false) |> DataFrame #occupations listed
+
 
 # Movie Struct
 struct movieFile
     id
-    name 
+    name
     genres
     releaseYear
 end
@@ -71,7 +73,49 @@ for n in 1:num_unique_combinations
     end
 end
 
+# Evaluate Genre Frequency
+all_genres = reduce(vcat, [movie.genres for movie in values(movieDict)])
+using StatsBase
+genre_frequency = countmap(all_genres)
+sorted_genres = sort(collect(genre_frequency), by=x -> -x[2])
 
+# Function to sort genres based on frequency
+function sort_movie_genres(movieDict, genre_frequency)
+    # Create a new dictionary with sorted genres
+    sorted_movieDict = Dict()
+
+    for (id, movie) in movieDict
+        # Sort genres by their frequency (descending) and use alphabetical order as a tiebreaker
+        sorted_genres = sort(movie.genres, by=x -> (-genre_frequency[x], x))
+        
+        # Create a new movieFile with sorted genres
+        sorted_movieDict[id] = movieFile(movie.id, movie.name, sorted_genres, movie.releaseYear)
+    end
+
+    return sorted_movieDict
+end
+
+# Apply the function
+sorted_movieDict = sort_movie_genres(movieDict, genre_frequency)
+
+# Print results
+for (id, movie) in sorted_movieDict
+    println("Movie: $(movie.name)")
+    println("Sorted Genres: $(movie.genres)")
+end
+
+open("movie_genres.txt", "w") do file
+    for row in 1:numberOfMovies # Loop over each row
+        nameMovie = movies[row,2]
+
+        # Find column names where value is 1
+        truefalseGenres = movies[row,genresBegin:genresEnd]
+        trueGenres = names(truefalseGenres)[collect(truefalseGenres) .== 1]
+        
+        # Write results to the file
+        println(file, "$nameMovie; ", join(trueGenres, "; "))
+    end
+end
 
 
 

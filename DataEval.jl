@@ -11,6 +11,7 @@ Pkg.add("Clustering")
 Pkg.add("Statistics")
 Pkg.add("Plots")
 Pkg.add("FileIO")
+Pkg.add("LinearAlgebra")
 
 include("DataEval_Functions.jl")
 include("QLearning_Functions.jl")
@@ -139,16 +140,38 @@ cluster_preferences = average_genre_preferences(normalized_userGenreMatrix, resu
 # Label Clusters
 threshold = 0.05
 cluster_labels = define_cluster_by_weight(cluster_preferences, genresListed, threshold)
+userAssignments = result.assignments
+clusterCentroids = result.centers'
 
 ## Offline Learning
+learningDataPercent = 0.6
+numLearningUsers = Int(round(learningDataPercent*numberUsers))
+learningData = ratings[ratings.userId .< numLearningUsers+1,:]
+
 # Initialize Q
-Q = zeros(k, final_unique_combinations)
+Q = zeros(k, final_num_unique_combinations)
+
+# Initialize User States 
+UserState = zeros(numLearningUsers,length(genresListed))
+UserStateInteger = zeros(Int,numLearningUsers,1)
+
+for u in 1:numLearningUsers
+    randInteger = rand(1:k)
+    UserStateInteger[u] = Int(randInteger)
+end
 
 # Define hyperparameters
 alpha = 0.5                    # Learning rate
 alpha_min = 0.05               # Min Learning Rate
 alpha_decay = 0.95             # Decay rate of alpha
-num_episodes = 10              # Number of episodes
+num_episodes = 2              # Number of episodes
+gamma = 0.9
+
+# Learn
+using LinearAlgebra
+New_Q = q_learning(Q,learningData,UserStateInteger,UserState,clusterCentroids,reduced_sorted_movieDict,genresListed,final_unique_combinations,num_episodes,gamma,alpha)
+
+
 
 
 

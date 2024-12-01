@@ -13,6 +13,7 @@ Pkg.add("Plots")
 Pkg.add("FileIO")
 
 include("DataEval_Functions.jl")
+include("QLearning_Functions.jl")
 
 using CSV
 using DataFrames
@@ -125,8 +126,8 @@ normalized_userGenreMatrix = userGenreMatrix ./ sum(userGenreMatrix, dims=2)
 
 # K-Means Clustering
 using Clustering, Statistics, IterTools
-k = 8  # Number of clusters
-result = kmeans(normalized_userGenreMatrix, k)
+k = 10  # Number of clusters/state space
+result = kmeans(normalized_userGenreMatrix', k)
 
 # Cluster Preferences
 cluster_preferences = average_genre_preferences(normalized_userGenreMatrix, result.assignments, k, genresListed)
@@ -136,25 +137,22 @@ cluster_preferences = average_genre_preferences(normalized_userGenreMatrix, resu
 #save_cluster_plots(cluster_preferences, genresListed) #these plots need to be improved if we want to include in documentation
 
 # Label Clusters
-threshold = 0.10
-group_1_scale=0.4
-group_2_scale=0.8
-group_1_genres=["drama", "comedy"]
-group_2_genres=["romance", "thriller","action"]
-cluster_labels = define_cluster_with_two_marginalized_groups(cluster_preferences, genresListed, group_1_genres, group_1_scale, group_2_genres, group_2_scale, threshold)
+threshold = 0.05
+cluster_labels = define_cluster_by_weight(cluster_preferences, genresListed, threshold)
 
-# Print cluster labels
-for (cluster_id, dominant_genres) in cluster_labels
-    println("Cluster $cluster_id: Dominant Genres - ", join(dominant_genres, ", "))
-end
+## Offline Learning
+# Initialize Q
+Q = zeros(k, final_unique_combinations)
 
-# Save cluster labels to a text file
-open("cluster_labels.txt", "w") do file
-    for (cluster_id, dominant_genres) in cluster_labels
-        println(file, "Cluster $cluster_id: Dominant Genres - ", join(dominant_genres, ", "))
-    end
-end
-println("Cluster labels saved to 'cluster_labels.txt'")
+# Define hyperparameters
+alpha = 0.5                    # Learning rate
+alpha_min = 0.05               # Min Learning Rate
+alpha_decay = 0.95             # Decay rate of alpha
+num_episodes = 10              # Number of episodes
+
+
+
+
 
 
 

@@ -1,8 +1,10 @@
-Cluster 5: Dominant Genres - drama, action, thriller, crime
-Cluster 4: Dominant Genres - drama, romance, action, sciFi, thriller
-Cluster 6: Dominant Genres - drama, romance
-Cluster 7: Dominant Genres - action, adventure, sciFi, thriller
-Cluster 2: Dominant Genres - drama, romance, action
-Cluster 8: Dominant Genres - comedy, action, adventure, sciFi
-Cluster 3: Dominant Genres - action
-Cluster 1: Dominant Genres - drama
+Cluster 5: Dominant Genres - drama, romance, comedy, war, action, adventure, thriller
+Cluster 4: Dominant Genres - drama, comedy, war, action, adventure, sciFi, thriller, crime
+Cluster 6: Dominant Genres - drama, romance, comedy, action, adventure, sciFi, thriller, horror
+Cluster 7: Dominant Genres - drama, romance, comedy, action, thriller, crime, mystery
+Cluster 2: Dominant Genres - drama, romance, comedy, war, action, thriller
+Cluster 10: Dominant Genres - drama, comedy, action, adventure, sciFi, horror, childrens
+Cluster 9: Dominant Genres - drama, romance, comedy, war, action, adventure, sciFi, thriller
+Cluster 8: Dominant Genres - drama, romance, comedy, action, adventure, sciFi, thriller, mystery
+Cluster 3: Dominant Genres - drama, romance, comedy, action, adventure, sciFi, thriller
+Cluster 1: Dominant Genres - drama, romance, comedy, war, action, adventure, thriller

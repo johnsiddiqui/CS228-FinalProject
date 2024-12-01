@@ -47,6 +47,29 @@ open("reduced_movieTypes.txt", "w") do file
     end
 end
 
+open("final_movies_genres.txt", "w") do file
+    for (id, movie) in final_movieDict
+        println(file,"$(movie.name);$(join(movie.genres,";"))")
+    end
+end
+
+open("final_genre_combination_counts.txt", "w") do file
+    for (combination, count) in final_genre_combination_counts
+        # Convert the combination tuple to a string
+        combination_str = join(combination, "|")
+        # Write the combination and count to the file
+        println(file, "$combination_str: $count")
+    end
+end
+
+# Save cluster labels to a text file
+open("cluster_labels.txt", "w") do file
+    for (cluster_id, dominant_genres) in cluster_labels
+        println(file, "Cluster $cluster_id: Dominant Genres - ", join(dominant_genres, ", "))
+    end
+end
+println("Cluster labels saved to 'cluster_labels.txt'")
+
 # Extract genre lists while preserving the original order
 reduced_genre_combinations = [reduced_sorted_movieDict[i].genres for i in 1:numberOfMovies]  # Get all genre lists
 
@@ -66,3 +89,7 @@ for n in 1:reduced_num_unique_combinations
     end
 end
 
+# Example: Assign a new user
+new_user = [0.2, 0.1, 0.5, 0.0]  # Example user preferences (19 genres)
+assigned_cluster = assign_new_user(new_user, result.centroids)
+println("New User Assigned to Cluster: ", assigned_cluster)

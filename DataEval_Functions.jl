@@ -53,3 +53,37 @@ function reassign_underobserved_genres(movieDict, min_observations)
     end
     return movieDict
 end
+
+function genreCombinations(user_genre_matrix, assignments, k, genres)
+    cluster_combinations = Dict()
+    for cluster_id in 1:k
+        # Get rows for users in this cluster
+        user_indices = findall(x -> x == cluster_id, assignments)
+        cluster_data = user_genre_matrix[user_indices, :]
+
+        # Find all combinations of genres for the cluster
+        cluster_comb = []
+        for row in eachrow(cluster_data)
+            genres_watched = findall(x -> x > 0, row)  # Indices of watched genres
+            append!(cluster_comb, collect(combinations(genres_watched, 2)))  # Pairwise combinations
+        end
+
+        # Count combinations
+        cluster_combinations[cluster_id] = countmap(cluster_comb)
+    end
+    return cluster_combinations
+end
+
+function average_genre_preferences(user_genre_matrix, assignments, k, genres)
+    cluster_preferences = Dict()
+    for cluster_id in 1:k
+        # Get rows for users in this cluster
+        user_indices = findall(x -> x == cluster_id, assignments)
+        cluster_data = user_genre_matrix[user_indices, :]
+        
+        # Calculate average preferences for this cluster
+        avg_preferences = mean(cluster_data, dims=1)
+        cluster_preferences[cluster_id] = avg_preferences
+    end
+    return cluster_preferences
+end

@@ -7,6 +7,11 @@ Pkg.add("CSV")
 Pkg.add("Printf")
 Pkg.add("DataFrames")
 Pkg.add("StatsBase")
+Pkg.add("Clustering")
+Pkg.add("Statistics")
+Pkg.add("IterTools")
+Pkg.add("Combinatorics")
+Pkg.add("Plots")
 
 include("DataEval_Functions.jl")
 
@@ -91,21 +96,55 @@ min_observations = 5
 final_movieDict = reassign_underobserved_genres(reduced_sorted_movieDict, min_observations)
 final_genre_combination_counts = countmap([Tuple(sort(movie.genres)) for movie in values(final_movieDict)])
 
-# Print Result 
-open("final_movies_genres.txt", "w") do file
-    for (id, movie) in final_movieDict
-        println(file,"$(movie.name);$(join(movie.genres,";"))")
+# Extract Final Genre List in Vector Form
+final_genre_combinations = [final_movieDict[i].genres for i in 1:numberOfMovies]
+final_unique_combinations = unique(final_genre_combinations) #action space
+final_num_unique_combinations = length(final_unique_combinations) #size of action space
+
+# Define User Genre Matrix
+numberRatings = size(ratings,1)
+numberUsers = size(users,1)
+genresListed = unique(all_genres)
+numberGenres = length(y)
+userGenreMatrix = zeros(numberUsers,numberGenres)
+for r in 1:numberRatings
+    userI = ratings.userId[r]
+    movieI = ratings.movieId[r]
+    for u in 1:numberUsers
+        if u == userI
+            for g in 1:numberGenres
+                genreI = genresListed[g]
+                if genreI in final_movieDict[movieI].genres # use refined data
+                    userGenreMatrix[userI,g] += 1
+                end
+            end
+        end
     end
 end
 
-open("final_genre_combination_counts.txt", "w") do file
-    for (combination, count) in final_genre_combination_counts
-        # Convert the combination tuple to a string
-        combination_str = join(combination, "|")
-        # Write the combination and count to the file
-        println(file, "$combination_str: $count")
-    end
+normalized_userGenreMatrix = userGenreMatrix ./ sum(userGenreMatrix, dims=2)
+
+# K-Means Clustering
+using Clustering, Statistics, IterTools
+k = 10  # Number of clusters
+result = kmeans(normalized_userGenreMatrix, k)
+
+# Example Clusters
+cluster_preferences = average_genre_preferences(normalized_userGenreMatrix, result.assignments, k, genresListed)
+
+# Print preferences for each cluster
+for (cluster_id, preferences) in cluster_preferences
+    println("Cluster $cluster_id Average Preferences: ", preferences)
 end
+
+using Plots
+
+# Example visualization for Cluster 1
+cluster_id = 1
+bar(genresListed, cluster_preferences[cluster_id]', 
+    title="Cluster $cluster_id Average Genre Preferences", xlabel="Genres", ylabel="Average Preference")
+
+
 
 
 

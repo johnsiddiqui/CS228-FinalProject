@@ -9,9 +9,8 @@ Pkg.add("DataFrames")
 Pkg.add("StatsBase")
 Pkg.add("Clustering")
 Pkg.add("Statistics")
-Pkg.add("IterTools")
-Pkg.add("Combinatorics")
 Pkg.add("Plots")
+Pkg.add("FileIO")
 
 include("DataEval_Functions.jl")
 
@@ -105,7 +104,7 @@ final_num_unique_combinations = length(final_unique_combinations) #size of actio
 numberRatings = size(ratings,1)
 numberUsers = size(users,1)
 genresListed = unique(all_genres)
-numberGenres = length(y)
+numberGenres = length(genresListed)
 userGenreMatrix = zeros(numberUsers,numberGenres)
 for r in 1:numberRatings
     userI = ratings.userId[r]
@@ -114,7 +113,7 @@ for r in 1:numberRatings
         if u == userI
             for g in 1:numberGenres
                 genreI = genresListed[g]
-                if genreI in final_movieDict[movieI].genres # use refined data
+                if genreI in movieDict[movieI].genres # use og data
                     userGenreMatrix[userI,g] += 1
                 end
             end
@@ -126,23 +125,37 @@ normalized_userGenreMatrix = userGenreMatrix ./ sum(userGenreMatrix, dims=2)
 
 # K-Means Clustering
 using Clustering, Statistics, IterTools
-k = 10  # Number of clusters
+k = 8  # Number of clusters
 result = kmeans(normalized_userGenreMatrix, k)
 
-# Example Clusters
+# Cluster Preferences
 cluster_preferences = average_genre_preferences(normalized_userGenreMatrix, result.assignments, k, genresListed)
 
-# Print preferences for each cluster
-for (cluster_id, preferences) in cluster_preferences
-    println("Cluster $cluster_id Average Preferences: ", preferences)
+# Plot Clusters
+#using Plots, FileIO
+#save_cluster_plots(cluster_preferences, genresListed) #these plots need to be improved if we want to include in documentation
+
+# Label Clusters
+threshold = 0.10
+group_1_scale=0.4
+group_2_scale=0.8
+group_1_genres=["drama", "comedy"]
+group_2_genres=["romance", "thriller","action"]
+cluster_labels = define_cluster_with_two_marginalized_groups(cluster_preferences, genresListed, group_1_genres, group_1_scale, group_2_genres, group_2_scale, threshold)
+
+# Print cluster labels
+for (cluster_id, dominant_genres) in cluster_labels
+    println("Cluster $cluster_id: Dominant Genres - ", join(dominant_genres, ", "))
 end
 
-using Plots
+# Save cluster labels to a text file
+open("cluster_labels.txt", "w") do file
+    for (cluster_id, dominant_genres) in cluster_labels
+        println(file, "Cluster $cluster_id: Dominant Genres - ", join(dominant_genres, ", "))
+    end
+end
+println("Cluster labels saved to 'cluster_labels.txt'")
 
-# Example visualization for Cluster 1
-cluster_id = 1
-bar(genresListed, cluster_preferences[cluster_id]', 
-    title="Cluster $cluster_id Average Genre Preferences", xlabel="Genres", ylabel="Average Preference")
 
 
 

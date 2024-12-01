@@ -54,26 +54,6 @@ function reassign_underobserved_genres(movieDict, min_observations)
     return movieDict
 end
 
-function genreCombinations(user_genre_matrix, assignments, k, genres)
-    cluster_combinations = Dict()
-    for cluster_id in 1:k
-        # Get rows for users in this cluster
-        user_indices = findall(x -> x == cluster_id, assignments)
-        cluster_data = user_genre_matrix[user_indices, :]
-
-        # Find all combinations of genres for the cluster
-        cluster_comb = []
-        for row in eachrow(cluster_data)
-            genres_watched = findall(x -> x > 0, row)  # Indices of watched genres
-            append!(cluster_comb, collect(combinations(genres_watched, 2)))  # Pairwise combinations
-        end
-
-        # Count combinations
-        cluster_combinations[cluster_id] = countmap(cluster_comb)
-    end
-    return cluster_combinations
-end
-
 function average_genre_preferences(user_genre_matrix, assignments, k, genres)
     cluster_preferences = Dict()
     for cluster_id in 1:k
@@ -87,3 +67,172 @@ function average_genre_preferences(user_genre_matrix, assignments, k, genres)
     end
     return cluster_preferences
 end
+
+
+function save_cluster_plots(cluster_preferences, genres, folder_path="cluster_plots")
+    # Ensure the folder exists
+    if !isdir(folder_path)
+        mkdir(folder_path)
+    end
+    
+    # Iterate over each cluster and save the plot
+    for (cluster_id, preferences) in cluster_preferences
+        # Generate the bar plot
+        bar(genres, preferences[:], label="Genres", color=:skyblue, legend=:topright, 
+           xticks=(1:length(genres), genres), rotation=45, bar_width=0.5)
+        
+        # Save the plot
+        file_name = joinpath(folder_path, "cluster_$cluster_id.png")
+        savefig(file_name)
+        println("Saved plot for Cluster $cluster_id at $file_name")
+    end
+end
+
+function label_clusters(cluster_preferences, genres, top_n)
+    cluster_labels = Dict()
+    for (cluster_id, preferences) in cluster_preferences
+        # Sort genres by preference in descending order
+        sorted_indices = sortperm(preferences[:], rev=true)
+        
+        # Get the top `top_n` genres for this cluster
+        dominant_genres = genres[sorted_indices[1:top_n]]
+        cluster_labels[cluster_id] = dominant_genres
+    end
+    return cluster_labels
+end
+
+function define_cluster_by_threshold(cluster_preferences, genres, threshold)
+    cluster_labels = Dict()
+    
+    for (cluster_id, preferences) in cluster_preferences
+        # Flatten preferences to ensure 1D array
+        preferences = vec(preferences)
+        
+        # Sort genres by preference (descending)
+        sorted_indices = sortperm(preferences, rev=true)
+        sorted_preferences = preferences[sorted_indices]
+        sorted_genres = genres[sorted_indices]
+        
+        # Compute cumulative sum
+        cumulative_sum = cumsum(sorted_preferences)
+        total_sum = sum(preferences)
+        
+        # Find genres contributing to the threshold
+        cutoff_index = findfirst(x -> x / total_sum >= threshold, cumulative_sum)
+        selected_genres = sorted_genres[1:cutoff_index]
+        
+        # Label the cluster with the selected genres
+        cluster_labels[cluster_id] = selected_genres
+    end
+    
+    return cluster_labels
+end
+
+function define_cluster_by_weight(cluster_preferences, genres, threshold)
+    cluster_labels = Dict()
+    
+    for (cluster_id, preferences) in cluster_preferences
+        # Flatten preferences to ensure 1D array
+        preferences = vec(preferences)
+        
+        # Compute relative weights
+        total_sum = sum(preferences)
+        relative_weights = preferences ./ total_sum  # Normalize to percentages
+        
+        # Filter genres exceeding the threshold
+        selected_indices = findall(x -> x >= threshold, relative_weights)
+        selected_genres = genres[selected_indices]
+        
+        # Label the cluster with the selected genres
+        cluster_labels[cluster_id] = selected_genres
+    end
+    
+    return cluster_labels
+end
+
+function define_cluster_without_drama_comedy(cluster_preferences, genres, excluded_genres, threshold)
+    # Find indices of excluded genres
+    excluded_indices = findall(x -> x in excluded_genres, genres)
+
+    cluster_labels = Dict()
+    for (cluster_id, preferences) in cluster_preferences
+        # Flatten preferences to ensure 1D array
+        preferences = vec(preferences)
+        
+        # Exclude Drama and Comedy
+        filtered_preferences = preferences
+        filtered_preferences[excluded_indices] .= 0  # Set excluded genres to 0
+
+        # Re-normalize preferences
+        total_sum = sum(filtered_preferences)
+        normalized_preferences = filtered_preferences ./ total_sum
+
+        # Filter genres exceeding the threshold
+        selected_indices = findall(x -> x >= threshold, normalized_preferences)
+        selected_genres = genres[selected_indices]
+        
+        # Label the cluster with the selected genres
+        cluster_labels[cluster_id] = selected_genres
+    end
+    
+    return cluster_labels
+end
+
+function define_cluster_with_marginalized_genres(cluster_preferences, genres, marginalize_genres, scale, threshold)
+    # Find indices of genres to marginalize
+    marginalize_indices = findall(x -> x in marginalize_genres, genres)
+
+    cluster_labels = Dict()
+    for (cluster_id, preferences) in cluster_preferences
+        # Flatten preferences to ensure 1D array
+        preferences = vec(preferences)
+        
+        # Scale contributions of marginalized genres
+        scaled_preferences = copy(preferences)
+        scaled_preferences[marginalize_indices] .= scaled_preferences[marginalize_indices] .* scale
+
+        # Re-normalize preferences
+        total_sum = sum(scaled_preferences)
+        normalized_preferences = scaled_preferences ./ total_sum
+
+        # Filter genres exceeding the threshold
+        selected_indices = findall(x -> x >= threshold, normalized_preferences)
+        selected_genres = genres[selected_indices]
+        
+        # Label the cluster with the selected genres
+        cluster_labels[cluster_id] = selected_genres
+    end
+    
+    return cluster_labels
+end
+
+function define_cluster_with_two_marginalized_groups(cluster_preferences,genres, group_1_genres, group_1_scale, group_2_genres, group_2_scale, threshold)
+    # Find indices for both groups of marginalized genres
+    group_1_indices = findall(x -> x in group_1_genres, genres)
+    group_2_indices = findall(x -> x in group_2_genres, genres)
+
+    cluster_labels = Dict()
+    for (cluster_id, preferences) in cluster_preferences
+        # Flatten preferences to ensure 1D array
+        preferences = vec(preferences)
+        
+        # Apply scaling to the two groups
+        scaled_preferences = copy(preferences)
+        scaled_preferences[group_1_indices] .= scaled_preferences[group_1_indices] .* group_1_scale
+        scaled_preferences[group_2_indices] .= scaled_preferences[group_2_indices] .* group_2_scale
+
+        # Re-normalize preferences
+        total_sum = sum(scaled_preferences)
+        normalized_preferences = scaled_preferences ./ total_sum
+
+        # Filter genres exceeding the threshold
+        selected_indices = findall(x -> x >= threshold, normalized_preferences)
+        selected_genres = genres[selected_indices]
+        
+        # Label the cluster with the selected genres
+        cluster_labels[cluster_id] = selected_genres
+    end
+    
+    return cluster_labels
+end
+

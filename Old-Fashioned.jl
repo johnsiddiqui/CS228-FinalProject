@@ -47,4 +47,22 @@ open("reduced_movieTypes.txt", "w") do file
     end
 end
 
+# Extract genre lists while preserving the original order
+reduced_genre_combinations = [reduced_sorted_movieDict[i].genres for i in 1:numberOfMovies]  # Get all genre lists
+
+# Use `unique` to eliminate duplicates while preserving the first occurrence order
+reduced_unique_combinations = unique(reduced_genre_combinations)
+
+# Number of unique combinations
+reduced_num_unique_combinations = length(reduced_unique_combinations)
+
+reduced_numMoviesofType = zeros(reduced_num_unique_combinations,1)
+
+for n in 1:reduced_num_unique_combinations
+    for m in 1:numberOfMovies
+        if reduced_unique_combinations[n] == reduced_sorted_movieDict[m].genres
+            reduced_numMoviesofType[n] += 1
+        end
+    end
+end
 

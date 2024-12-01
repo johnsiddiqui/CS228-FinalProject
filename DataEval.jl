@@ -28,7 +28,6 @@ rename!(users, [:userId,:age,:gender,:occupation,:zipCode])
 genres = CSV.File("CS228/Data/ml-100k/u.genre", header = false) |> DataFrame #genre ids
 occupations = CSV.File("CS228/Data/ml-100k/u.occupation", header = false) |> DataFrame #occupations listed
 
-
 # Movie Struct
 struct movieFile
     id
@@ -78,41 +77,37 @@ end
 all_genres = reduce(vcat, [movie.genres for movie in values(movieDict)])
 using StatsBase
 genre_frequency = countmap(all_genres)
-sorted_genres = sort(collect(genre_frequency), by=x -> -x[2])
 
 # Sort by Frequency
 sorted_movieDict = sort_movie_genres(movieDict, genre_frequency)
 
-# Retain only the top genres
-n_genres = 3
-reduced_sorted_movieDict = retain_top_genres(sorted_movieDict,n_genres)
+# Reduce Genre Assignment to <= 2 with Priority given to the Least Frequent/Most Unique Genres
+n_genres = 2
+reduced_sorted_movieDict = retain_n_genres(sorted_movieDict,n_genres)
+reduced_genre_combination_counts = countmap([Tuple(sort(movie.genres)) for movie in values(reduced_sorted_movieDict)])
 
-# Extract genre lists while preserving the original order
-reduced_genre_combinations = [reduced_sorted_movieDict[i].genres for i in 1:numberOfMovies]  # Get all genre lists
+# Reassign all Underobserved Combinations to a Singular Genre where the Singular Genre is the Least Frequent/Most Unique Genre
+min_observations = 5
+final_movieDict = reassign_underobserved_genres(reduced_sorted_movieDict, min_observations)
+final_genre_combination_counts = countmap([Tuple(sort(movie.genres)) for movie in values(final_movieDict)])
 
-# Use `unique` to eliminate duplicates while preserving the first occurrence order
-reduced_unique_combinations = unique(reduced_genre_combinations)
-
-# Number of unique combinations
-reduced_num_unique_combinations = length(reduced_unique_combinations)
-
-reduced_numMoviesofType = zeros(reduced_num_unique_combinations,1)
-
-for n in 1:reduced_num_unique_combinations
-    for m in 1:numberOfMovies
-        if reduced_unique_combinations[n] == reduced_sorted_movieDict[m].genres
-            reduced_numMoviesofType[n] += 1
-        end
+# Print Result 
+open("final_movies_genres.txt", "w") do file
+    for (id, movie) in final_movieDict
+        println(file,"$(movie.name);$(join(movie.genres,";"))")
     end
 end
 
-open("reduced3_movieTypes.txt", "w") do file
-    for n in 1:reduced_num_unique_combinations  # Loop over each row
-        type = join(reduced_unique_combinations[n],"|")
-        number = reduced_numMoviesofType[n]
-        println(file,"$type: $number")
+open("final_genre_combination_counts.txt", "w") do file
+    for (combination, count) in final_genre_combination_counts
+        # Convert the combination tuple to a string
+        combination_str = join(combination, "|")
+        # Write the combination and count to the file
+        println(file, "$combination_str: $count")
     end
 end
+
+
 
 
 

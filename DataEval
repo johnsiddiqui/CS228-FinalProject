@@ -1,5 +1,4 @@
 # John Siddiqui
-# Final Project
 # Data Processing
 
 ## Packages
@@ -8,6 +7,8 @@ Pkg.add("CSV")
 Pkg.add("Printf")
 Pkg.add("DataFrames")
 Pkg.add("StatsBase")
+
+include("DataEval_Functions.jl")
 
 using CSV
 using DataFrames
@@ -38,7 +39,7 @@ end
 
 movieDict = Dict()
 numberOfMovies = size(movies,1)
-genresBegin = 7; genresEnd = 24
+genresBegin = 6; genresEnd = 24
 
 for m in 1:numberOfMovies
     row = movies[m,:]
@@ -79,41 +80,37 @@ using StatsBase
 genre_frequency = countmap(all_genres)
 sorted_genres = sort(collect(genre_frequency), by=x -> -x[2])
 
-# Function to sort genres based on frequency
-function sort_movie_genres(movieDict, genre_frequency)
-    # Create a new dictionary with sorted genres
-    sorted_movieDict = Dict()
-
-    for (id, movie) in movieDict
-        # Sort genres by their frequency (descending) and use alphabetical order as a tiebreaker
-        sorted_genres = sort(movie.genres, by=x -> (-genre_frequency[x], x))
-        
-        # Create a new movieFile with sorted genres
-        sorted_movieDict[id] = movieFile(movie.id, movie.name, sorted_genres, movie.releaseYear)
-    end
-
-    return sorted_movieDict
-end
-
-# Apply the function
+# Sort by Frequency
 sorted_movieDict = sort_movie_genres(movieDict, genre_frequency)
 
-# Print results
-for (id, movie) in sorted_movieDict
-    println("Movie: $(movie.name)")
-    println("Sorted Genres: $(movie.genres)")
+# Retain only the top genres
+n_genres = 2
+reduced_sorted_movieDict = retain_top_genres(sorted_movieDict,n_genres)
+
+# Extract genre lists while preserving the original order
+reduced_genre_combinations = [reduced_sorted_movieDict[i].genres for i in 1:numberOfMovies]  # Get all genre lists
+
+# Use `unique` to eliminate duplicates while preserving the first occurrence order
+reduced_unique_combinations = unique(reduced_genre_combinations)
+
+# Number of unique combinations
+reduced_num_unique_combinations = length(reduced_unique_combinations)
+
+reduced_numMoviesofType = zeros(reduced_num_unique_combinations,1)
+
+for n in 1:reduced_num_unique_combinations
+    for m in 1:numberOfMovies
+        if reduced_unique_combinations[n] == reduced_sorted_movieDict[m].genres
+            reduced_numMoviesofType[n] += 1
+        end
+    end
 end
 
-open("movie_genres.txt", "w") do file
-    for row in 1:numberOfMovies # Loop over each row
-        nameMovie = movies[row,2]
-
-        # Find column names where value is 1
-        truefalseGenres = movies[row,genresBegin:genresEnd]
-        trueGenres = names(truefalseGenres)[collect(truefalseGenres) .== 1]
-        
-        # Write results to the file
-        println(file, "$nameMovie; ", join(trueGenres, "; "))
+open("reduced_movieTypes.txt", "w") do file
+    for n in 1:reduced_num_unique_combinations  # Loop over each row
+        type = join(reduced_unique_combinations[n],"|")
+        number = reduced_numMoviesofType[n]
+        println(file,"$type: $number")
     end
 end
 

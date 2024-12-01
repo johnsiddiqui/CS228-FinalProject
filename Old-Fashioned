@@ -39,6 +39,12 @@ open("movies_sorted_genres.txt", "w") do file
     end
 end
 
-
+open("reduced_movieTypes.txt", "w") do file
+    for n in 1:reduced_num_unique_combinations  # Loop over each row
+        type = join(reduced_unique_combinations[n],"|")
+        number = reduced_numMoviesofType[n]
+        println(file,"$type: $number")
+    end
+end
 
 

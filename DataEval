@@ -84,7 +84,7 @@ sorted_genres = sort(collect(genre_frequency), by=x -> -x[2])
 sorted_movieDict = sort_movie_genres(movieDict, genre_frequency)
 
 # Retain only the top genres
-n_genres = 2
+n_genres = 3
 reduced_sorted_movieDict = retain_top_genres(sorted_movieDict,n_genres)
 
 # Extract genre lists while preserving the original order
@@ -106,7 +106,7 @@ for n in 1:reduced_num_unique_combinations
     end
 end
 
-open("reduced_movieTypes.txt", "w") do file
+open("reduced3_movieTypes.txt", "w") do file
     for n in 1:reduced_num_unique_combinations  # Loop over each row
         type = join(reduced_unique_combinations[n],"|")
         number = reduced_numMoviesofType[n]

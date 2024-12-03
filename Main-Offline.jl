@@ -158,6 +158,8 @@ for u in 1:numLearningUsers
     UserStateInteger[u] = Int(randInteger)
 end
 
+# Placeholder for hybrid model and user metrics based Q initialization
+
 # Define hyperparameters
 alpha = 0.5                    # Learning rate
 alpha_min = 0.05               # Min Learning Rate
@@ -168,39 +170,11 @@ gamma = 0.9
 # Learn
 using LinearAlgebra
 Q = q_learning(Q,learningData,UserStateInteger,UserState,clusterCentroids,reduced_sorted_movieDict,genresListed,final_unique_combinations,num_episodes,gamma,alpha)
+meanRating = mean(learningData.rating)
 
-
-# Predict Rating 
-testUser = 600
-ratingsUser = ratings[ratings.userId .== testUser, :]
-numRatingsUser = size(ratingsUser,1)
-for r in 1:numRatingsUser
-    # initialize
-    if r == 1
-        userCluster = rand(1:k)
-        userPreferences = zeros(1,length(genresListed))
-    end
-    # sampled data
-    movieI = ratingsUser.movieId[r]
-    genresI = reduced_sorted_movieDict[movieI].genres
-    nameI = reduced_sorted_movieDict[movieI].name
-    actionIndex = findfirst(x -> x == genresI, final_unique_combinations)
-    # given current state, predict rating given sampled movie
-    expectedReturn = Q[userCluster,actionIndex]
-    predictedRating = expectedReturn
-    actualRating = ratingsUser.rating[r]
-    println("ID: $testUser; Movie: $nameI")
-    println("Predicted Rating: $predictedRating; Actual Rating: $actualRating")
-
-    # update state
-    updatedPreferences = update_user_preferences(userPreferences,genresI,genresListed)
-    userPreferences = updatedPreferences
-    userCluster = assign_cluster(updatedPreferences, clusterCentroids)
-end
-max_q = maximum(Q)
-min_q = minimum(Q)
-#normQ = 2.0 + 3.0 * (predicted_rating - min_q) / (max_q - min_q)
-
+# Save Variables 
+using JLD2
+@save "CS228/variablesLearning.jld2" ratings meanRating testData clusterCentroids k reduced_sorted_movieDict genresListed final_unique_combinations Q
 
 
 

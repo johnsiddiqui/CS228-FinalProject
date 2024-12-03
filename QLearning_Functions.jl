@@ -54,3 +54,26 @@ function q_learning(Q,learningData,UserStateInteger,UserState,clusterCentroids,m
     end
     return Q
 end
+
+## Predict Rating
+function ratingPredict(meanRating,Q,Qi)
+    meanQ = mean(Q)
+    maxQ = maximum(Q)
+    minQ = minimum(filter(x -> x != 0, Q))
+    rangeUp = maxQ - meanQ
+    rangeDown = meanQ - minQ
+    if Qi > meanQ
+        delta = (Qi - meanQ)/rangeUp*2
+        score = Int(round(meanRating + delta))
+    else
+        delta = (meanQ - Qi)/rangeDown*2
+        score = Int(round(meanRating - delta))
+    end
+    return score 
+end
+
+# Mean Absolute Error
+function calculate_mae(predictions, actuals)
+    n = length(predictions)
+    sum(abs.(predictions .- actuals)) / n
+end

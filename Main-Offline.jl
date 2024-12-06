@@ -13,6 +13,9 @@ Pkg.add("Plots")
 Pkg.add("FileIO")
 Pkg.add("LinearAlgebra")
 Pkg.add("JLD2")
+Pkg.add("NaiveBayes")
+Pkg.add("CategoricalArrays")
+
 
 include("DataEval_Functions.jl")
 include("QLearning_Functions.jl")
@@ -158,13 +161,91 @@ for u in 1:numLearningUsers
     UserStateInteger[u] = Int(randInteger)
 end
 
-# Placeholder for hybrid model and user metrics based Q initialization
+# Hybrid model - user metrics cluster initialization
+using DataFrames, CategoricalArrays
+userAge = String[]
+
+for u in 1:numberUsers
+    if users.age[u] < 13
+        push!(userAge,"0-12")
+    elseif users.age[u] < 19
+        push!(userAge,"13-18")
+    elseif users.age[u] < 30
+        push!(userAge,"19-29")
+    elseif users.age[u] < 60
+        push!(userAge,"30-59")
+    else
+        push!(userAge,"60+")
+    end
+end
+
+UserDemographics = DataFrame(user_id = users.userId, age_group = userAge, gender = users.gender, cluster = userAssignments)
+grouped = combine(DataFrames.groupby(UserDemographics, :cluster), nrow => :count, :age_group, :gender)
+age_distribution = combine(DataFrames.groupby(UserDemographics, [:cluster, :age_group]), nrow => :count)
+
+# Convert columns to categorical arrays
+UserDemographics.age_group = categorical(UserDemographics.age_group)
+UserDemographics.gender = categorical(UserDemographics.gender)
+UserDemographics.cluster = categorical(UserDemographics.cluster)
+
+# Extract features and target
+X_age = levelcode.(UserDemographics.age_group)
+X_gender = levelcode.(UserDemographics.gender)
+X = hcat(X_age, X_gender)
+
+y = levelcode.(UserDemographics.cluster)  # Convert target to integer codes
+
+# Check unique classes and feature levels
+classes = unique(y)
+age_levels = length(levels(UserDemographics.age_group))    # Number of distinct age groups
+gender_levels = length(levels(UserDemographics.gender))    # Number of distinct genders
+
+# Count how many features we have
+num_features = size(X, 2)
+
+# Build Naive Bayes model data structures
+class_counts = zeros(Int, length(classes)) # how many instances per class
+feature_counts = Dict{Tuple{Int,Int,Int},Int}() # a dictionary that maps (feature_index, class, feature_value) -> count
+
+# Initialize all counts to zero
+for c in classes
+    class_counts[c] = 0
+end
+
+# Count occurrences in the training set
+N = size(X, 1)
+for i in 1:N
+    c = y[i]
+    class_counts[c] += 1
+    
+    # For each feature j
+    for j in 1:num_features
+        f_val = X[i, j]
+        key = (j, c, f_val)
+        feature_counts[key] = get(feature_counts, key, 0) + 1
+    end
+end
+
+feature_levels = [age_levels, gender_levels]
+
+# Initialize User States 
+#UserState = zeros(numLearningUsers,length(genresListed))
+#UserStateInteger = zeros(Int,numLearningUsers,1)
+
+#for u in 1:numLearningUsers
+    #ageI = categorical([string(UserDemographics.age_group[u])];levels=levels(UserDemographics.age_group))
+    #genderI = categorical([string(UserDemographics.gender[u])];levels=levels(UserDemographics.gender))
+    #age_code = levelcode(ageI[1])
+    #gender_code = levelcode(genderI[1])
+    #dataI = [age_code,gender_code]
+    #UserStateInteger[u] = predict_naive_bayes(dataI, class_counts, feature_counts, num_features, feature_levels)
+#end
 
 # Define hyperparameters
 alpha = 0.5                    # Learning rate
 alpha_min = 0.05               # Min Learning Rate
 alpha_decay = 0.95             # Decay rate of alpha
-num_episodes = 2              # Number of episodes
+num_episodes = 3              # Number of episodes
 gamma = 0.9
 
 # Learn
@@ -174,7 +255,7 @@ meanRating = mean(learningData.rating)
 
 # Save Variables 
 using JLD2
-@save "CS228/variablesLearning.jld2" ratings meanRating testData clusterCentroids k reduced_sorted_movieDict genresListed final_unique_combinations Q
+@save "CS228/variablesLearning.jld2" ratings meanRating testData clusterCentroids k reduced_sorted_movieDict genresListed final_unique_combinations Q UserDemographics class_counts feature_counts num_features feature_levels
 
 
 

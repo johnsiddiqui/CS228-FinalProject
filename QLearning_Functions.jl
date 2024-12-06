@@ -77,3 +77,47 @@ function calculate_mae(predictions, actuals)
     n = length(predictions)
     sum(abs.(predictions .- actuals)) / n
 end
+
+# Demographis User Group Assignment
+function profileUser(userId,users)
+    ageI = users.age[userId]
+    genderI = users.gender[userId]
+    profileInt = ceil(ageI/10)#i.e., if you are in your 40s, 5 etc.; [1,8] in this dataset
+    if genderI == "M"
+        return profileInt
+    else
+        return profileInt+ceil(maximum(users.age)/10)
+    end
+end
+
+# Compute priors and conditional probabilities
+# P(C) = class_counts[c] / N
+# P(F_j = f | C) = feature_counts[(j, c, f)] / class_counts[c]
+function predict_naive_bayes(x::Vector{Int},class_counts::Vector{Int},feature_counts::Dict{Tuple{Int,Int,Int},Int},num_features::Int,feature_levels::Vector{Int})
+
+    N = sum(class_counts)
+    best_class = 0
+    best_score = -Inf
+
+    for c in 1:length(class_counts)
+        log_prob = log(class_counts[c]) - log(N) # Compute log probability to avoid underflow, log P(C)
+
+        # Multiply by each feature probability
+        for j in 1:num_features
+            f_val = x[j]
+            key = (j, c, f_val)
+            count = get(feature_counts, key, 0)
+            # Laplace smoothing: P(F_j=f_val | C) = (count + 1) / (class_counts[c] + feature_levels[j])
+            num_levels = feature_levels[j]
+            log_prob += log(count + 1) - log(class_counts[c] + num_levels)
+        end
+
+        # Keep track of the best class
+        if log_prob > best_score
+            best_score = log_prob
+            best_class = c
+        end
+    end
+
+    return best_class
+end

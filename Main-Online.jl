@@ -8,7 +8,8 @@ include("QLearning_Functions.jl")
 
 # Load offline variables
 using JLD2
-@load "CS228/variablesLearning.jld2" ratings meanRating testData clusterCentroids k reduced_sorted_movieDict genresListed final_unique_combinations Q
+@JLD2.load "CS228/variablesLearning.jld2" ratings meanRating testData clusterCentroids k reduced_sorted_movieDict genresListed final_unique_combinations Q UserDemographics class_counts feature_counts num_features feature_levels
+
 
 # Predict Rating
 userIdMin = minimum(testData.userId)
@@ -24,8 +25,15 @@ for testUser in userIdMin:userIdMax
     for r in 1:numRatingsUser
         # initialize
         if r == 1
-            userCluster = rand(1:k)
-            userPreferences = zeros(1,length(genresListed))
+            ageI = categorical([string(UserDemographics.age_group[testUser])];levels=levels(UserDemographics.age_group))
+            genderI = categorical([string(UserDemographics.gender[testUser])];levels=levels(UserDemographics.gender))
+            age_code = levelcode(ageI[1])
+            gender_code = levelcode(genderI[1])
+            dataI = [age_code,gender_code]
+            userCluster = predict_naive_bayes(dataI, class_counts, feature_counts, num_features, feature_levels)
+            userPreferences = clusterCentroids[userCluster,:]
+            #userCluster = rand(1:k)
+            #userPreferences = zeros(1,length(genresListed))
         end
         # sampled data
         movieI = ratingsUser.movieId[r]

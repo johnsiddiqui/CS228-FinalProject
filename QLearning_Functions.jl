@@ -44,7 +44,7 @@ function q_learning(Q,learningData,UserStateInteger,UserState,clusterCentroids,m
             UserState[userI,:] = updated_preferences
             assigned_cluster = assign_cluster(updated_preferences, clusterCentroids)
             next_state = assigned_cluster
-            println("userI: $userI; state: $state; action: $action; reward: $reward; next state: $next_state")
+            #println("userI: $userI; state: $state; action: $action; reward: $reward; next state: $next_state")
 
             # Q-learning update
             max_next_q = maximum(Q[next_state, a] for a = 1:num_actions)
@@ -120,4 +120,35 @@ function predict_naive_bayes(x::Vector{Int},class_counts::Vector{Int},feature_co
     end
 
     return best_class
+end
+
+# Silhouette Score 
+function silhouetteScore(k,userAssignments,clusterCentroids,normalized_userGenreMatrix)
+    scoreMatrix = zeros(k,1)
+    numPoints = size(normalized_userGenreMatrix,1)
+    distanceCounts = zeros(k,2) #1st column is for sum of distance, 2nd column is for number of points
+    for point in 1:numPoints
+        pointVector = normalized_userGenreMatrix[point,:]
+        pointAssignment = userAssignments[point]
+        centroidI = clusterCentroids[pointAssignment,:]
+        distance = abs(cosine_similarity(pointVector,centroidI))
+        distanceCounts[pointAssignment,1] += distance
+        distanceCounts[pointAssignment,2] += 1
+    end
+
+    for i in 1:k
+        ai = distanceCounts[i,1]/distanceCounts[i,2] #Average distance of point i to all other points in the same cluster (intracluster distance)
+        bi = Inf
+        for o in 1:k
+            if o != i #Minimum average distance of point i to all points in any other cluster (nearest-cluster distance)
+                # defined as the distance to the nearest centroid as a centroid is defined as the average location of all the points in a cluster
+                bi_candidate = abs(cosine_similarity(clusterCentroids[o,:],clusterCentroids[i,:]))
+                if bi_candidate < bi 
+                    bi = bi_candidate
+                end 
+            end 
+        end
+        scoreMatrix[i] = (bi - ai)/max(ai,bi)
+    end
+    return scoreMatrix, distanceCounts
 end

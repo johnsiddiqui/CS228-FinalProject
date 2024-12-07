@@ -115,12 +115,13 @@ userGenreMatrix = zeros(numberUsers,numberGenres)
 for r in 1:numberRatings
     userI = ratings.userId[r]
     movieI = ratings.movieId[r]
+    ratingI = ratings.rating[r]
     for u in 1:numberUsers
         if u == userI
             for g in 1:numberGenres
                 genreI = genresListed[g]
                 if genreI in movieDict[movieI].genres # use og data
-                    userGenreMatrix[userI,g] += 1
+                    userGenreMatrix[userI,g] += 1*ratingI
                 end
             end
         end
@@ -131,7 +132,7 @@ normalized_userGenreMatrix = userGenreMatrix ./ sum(userGenreMatrix, dims=2)
 
 # K-Means Clustering
 using Clustering, Statistics, IterTools
-k = 15  # Number of clusters/state space
+k = 8  # Number of clusters/state space (max = 943)
 result = kmeans(normalized_userGenreMatrix', k)
 
 # Cluster Preferences
@@ -142,6 +143,11 @@ threshold = 0.05
 cluster_labels = define_cluster_by_weight(cluster_preferences, genresListed, threshold)
 userAssignments = result.assignments
 clusterCentroids = result.centers'
+
+# Evaluate k
+score, distanceCounts = silhouetteScore(k,userAssignments,clusterCentroids,normalized_userGenreMatrix)
+meanScore = mean(score)
+println("k: $k; Silhouette Score: $meanScore")
 
 ## Offline Learning
 learningDataPercent = 0.6
@@ -243,10 +249,8 @@ feature_levels = [age_levels, gender_levels]
 
 # Define hyperparameters
 alpha = 0.5                    # Learning rate
-alpha_min = 0.05               # Min Learning Rate
-alpha_decay = 0.95             # Decay rate of alpha
-num_episodes = 3              # Number of episodes
-gamma = 0.9
+num_episodes = 1000              # Number of episodes
+gamma = 0.9                    # discount factor 
 
 # Learn
 using LinearAlgebra
@@ -255,13 +259,7 @@ meanRating = mean(learningData.rating)
 
 # Save Variables 
 using JLD2
-@save "CS228/variablesLearning.jld2" ratings meanRating testData clusterCentroids k reduced_sorted_movieDict genresListed final_unique_combinations Q UserDemographics class_counts feature_counts num_features feature_levels
-
-
-
-
-
-
+@save "CS228/variablesLearning-1000-2-5-hybrid-Weighted.jld2" ratings meanRating testData clusterCentroids k reduced_sorted_movieDict genresListed final_unique_combinations Q UserDemographics class_counts feature_counts num_features feature_levels
 
 
 

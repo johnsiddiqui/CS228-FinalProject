@@ -92,12 +92,12 @@ genre_frequency = countmap(all_genres)
 sorted_movieDict = sort_movie_genres(movieDict, genre_frequency)
 
 # Reduce Genre Assignment to <= 2 with Priority given to the Least Frequent/Most Unique Genres
-n_genres = 2
+n_genres = 1
 reduced_sorted_movieDict = retain_n_genres(sorted_movieDict,n_genres)
 reduced_genre_combination_counts = countmap([Tuple(sort(movie.genres)) for movie in values(reduced_sorted_movieDict)])
 
 # Reassign all Underobserved Combinations to a Singular Genre where the Singular Genre is the Least Frequent/Most Unique Genre
-min_observations = 5
+min_observations = 2
 final_movieDict = reassign_underobserved_genres(reduced_sorted_movieDict, min_observations)
 final_genre_combination_counts = countmap([Tuple(sort(movie.genres)) for movie in values(final_movieDict)])
 
@@ -121,7 +121,7 @@ for r in 1:numberRatings
             for g in 1:numberGenres
                 genreI = genresListed[g]
                 if genreI in movieDict[movieI].genres # use og data
-                    userGenreMatrix[userI,g] += 1*ratingI
+                    userGenreMatrix[userI,g] += 1#*ratingI
                 end
             end
         end
@@ -259,7 +259,7 @@ meanRating = mean(learningData.rating)
 
 # Save Variables 
 using JLD2
-@save "CS228/variablesLearning-1000-2-5-hybrid-Weighted.jld2" ratings meanRating testData clusterCentroids k reduced_sorted_movieDict genresListed final_unique_combinations Q UserDemographics class_counts feature_counts num_features feature_levels
+@save "CS228/variablesLearning-1000-1-2-hybrid-nWeighted.jld2" ratings meanRating testData clusterCentroids k reduced_sorted_movieDict genresListed final_unique_combinations Q UserDemographics class_counts feature_counts num_features feature_levels
 
 
 

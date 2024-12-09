@@ -4,11 +4,12 @@
 using Pkg
 Pkg.add("CSV")
 Pkg.add("JLD2")
+Pkg.add("Statistics")
 include("QLearning_Functions.jl")
 
 # Load offline variables
-using JLD2
-@JLD2.load "CS228/variablesLearning-1000-2-5-hybrid-nWeighted.jld2" ratings meanRating testData clusterCentroids k reduced_sorted_movieDict genresListed final_unique_combinations Q UserDemographics class_counts feature_counts num_features feature_levels
+using JLD2, Statistics
+@JLD2.load "CS228/variablesLearning-1000-2-2-hybrid-nWeighted.jld2" ratings meanRating testData clusterCentroids k reduced_sorted_movieDict genresListed final_unique_combinations Q UserDemographics class_counts feature_counts num_features feature_levels
 
 
 # Predict Rating
@@ -16,8 +17,9 @@ userIdMin = minimum(testData.userId)
 userIdMax = maximum(testData.userId)
 numTestUsers = userIdMax-userIdMin+1
 maeMatrix = zeros(numTestUsers,3)
-maeLearn = zeros(numTestUsers,10)
-maeBaseline = zeros(numTestUsers,10)
+maxO = 200 # less than 50 after 197
+maeLearn = fill(NaN, numTestUsers, maxO)
+maeBaseline = fill(NaN, numTestUsers, maxO)
 
 for testUser in userIdMin:userIdMax
     ratingsUser = ratings[ratings.userId .== testUser, :]
@@ -34,8 +36,8 @@ for testUser in userIdMin:userIdMax
             dataI = [age_code,gender_code]
             userCluster = predict_naive_bayes(dataI, class_counts, feature_counts, num_features, feature_levels)
             userPreferences = clusterCentroids[userCluster,:]
-            #userCluster = rand(1:k)
-            #userPreferences = zeros(1,length(genresListed))
+            userCluster = rand(1:k)
+            userPreferences = zeros(1,length(genresListed))
         end
         # sampled data
         movieI = ratingsUser.movieId[r]
@@ -62,7 +64,7 @@ for testUser in userIdMin:userIdMax
         ratingsMatrix[r,3] = randRating
 
         # metrics as a function of observation 
-        if r < 11 # every user in dataset has at least 10 observations
+        if r <= maxO && r <= numRatingsUser # every user in dataset has at least 10 observations
             maeLearn[testUser - userIdMin + 1,r] = round(calculate_mae(predictedRating, actualRating),digits=2)
             maeBaseline[testUser - userIdMin + 1,r] = round(calculate_mae(randRating, actualRating),digits=2)
         end
@@ -78,20 +80,25 @@ for testUser in userIdMin:userIdMax
 end
 
 # Evaluate
-maeMatrixbyObservations = zeros(10,3)
-for o in 1:10
-    meanMAEModel = round(mean(maeLearn[:,o]),digits=2)
-    meanMAEBaseline = round(mean(maeBaseline[:,o]),digits=2)
+maeMatrixbyObservations = zeros(maxO,4)
+for o in 1:maxO
+    filtered_Model = filter(x -> !isnan(x), maeLearn[:,o])
+    meanMAEModel = round(mean(filtered_Model),digits=2)
+    count_non_nan = sum(!isnan(x) for x in maeLearn[:,o])
+    filtered_Baseline = filter(x -> !isnan(x), maeBaseline)
+    meanMAEBaseline = round(mean(filtered_Baseline),digits=2)
     maeMatrixbyObservations[o,1] = o 
     maeMatrixbyObservations[o,2] = meanMAEModel
     maeMatrixbyObservations[o,3] = meanMAEBaseline
-    println("Observation: $o; MAE Model: $meanMAEModel; MAE Baseline: $meanMAEBaseline")
+    maeMatrixbyObservations[o,4] = count_non_nan
+    println("Observation: $o; MAE Model: $meanMAEModel; MAE Baseline: $meanMAEBaseline; # Users: $count_non_nan")
 end
 
 # Save metrics
 using CSV
 #column_names = [:UserId, :Model, :Baseline]
-column_names = [:Observation, :Model, :Baseline]
+maeMatrixbyObservations[maeMatrixbyObservations .== 0] .= NaN
+column_names = [:Observation, :Model, :Baseline, :NumUsers]
 df = DataFrame(maeMatrixbyObservations, column_names)
-CSV.write("CS228/metrics-1000-2-5-nhybrid-nWeighted.csv", df)
+CSV.write("CS228/metrics-1000-2-2-other-nhybrid-nWeighted.csv", df)
 
